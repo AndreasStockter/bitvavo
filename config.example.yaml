@@ -1,0 +1,42 @@
+trading:
+  market: "BTC-EUR"
+  interval: "1h"
+  mode: "paper"  # "paper" or "live"
+  max_open_orders: 3
+
+strategy:
+  name: "ma_crossover"  # "ma_crossover", "rsi", "bollinger", "composite"
+  ma_crossover:
+    fast_period: 10
+    slow_period: 30
+  rsi:
+    period: 14
+    overbought: 70
+    oversold: 30
+  bollinger:
+    period: 20
+    std_dev: 2.0
+  composite:
+    strategies:
+      - "ma_crossover"
+      - "rsi"
+    mode: "majority"  # "unanimous", "majority", "any"
+
+risk:
+  max_position_pct: 0.25
+  max_drawdown_pct: 0.10
+  stop_loss_pct: 0.05
+  take_profit_pct: 0.10
+  max_daily_trades: 10
+
+backtest:
+  days: 90
+  initial_capital: 10000.0
+  fee_pct: 0.0025
+
+telegram:
+  enabled: false
+  chat_id: ""
+
+database:
+  path: "trades.db"

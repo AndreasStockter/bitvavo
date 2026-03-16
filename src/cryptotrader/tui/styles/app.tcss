@@ -1,0 +1,75 @@
+Screen {
+    layout: vertical;
+}
+
+#header {
+    dock: top;
+    height: 3;
+    content-align: center middle;
+    background: $boost;
+    color: $text;
+    text-style: bold;
+}
+
+#footer-bar {
+    dock: bottom;
+    height: 1;
+    background: $panel;
+    color: $text-muted;
+    padding: 0 1;
+}
+
+.screen-container {
+    height: 1fr;
+    padding: 1;
+}
+
+.top-row {
+    layout: horizontal;
+    height: auto;
+    max-height: 16;
+}
+
+.top-row > * {
+    width: 1fr;
+}
+
+.bottom-row {
+    height: 1fr;
+}
+
+#price-label {
+    text-align: center;
+    text-style: bold;
+    height: 3;
+    content-align: center middle;
+    color: $text;
+    background: $surface;
+    margin: 1;
+}
+
+#backtest-controls {
+    height: auto;
+    padding: 1;
+    border: solid $accent;
+    margin: 1;
+}
+
+#backtest-results {
+    height: 1fr;
+    margin: 1;
+}
+
+#orders-table {
+    height: 1fr;
+    margin: 1;
+}
+
+#log-view {
+    height: 1fr;
+    margin: 1;
+}
+
+DataTable {
+    height: 1fr;
+}
