@@ -18,10 +18,19 @@ class MACrossoverConfig(BaseModel):
     slow_period: int = 30
 
 
+class RSITimeframeConfig(BaseModel):
+    interval: str = "1h"
+    period: int = 14
+    overbought: float = 70.0
+    oversold: float = 30.0
+
+
 class RSIConfig(BaseModel):
     period: int = 14
     overbought: float = 70.0
     oversold: float = 30.0
+    timeframes: list[RSITimeframeConfig] = Field(default_factory=list)
+    confirmation: str = "all"  # "all" or "any"
 
 
 class BollingerConfig(BaseModel):

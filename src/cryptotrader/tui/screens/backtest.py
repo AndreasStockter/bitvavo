@@ -37,6 +37,7 @@ class BacktestScreen(Screen):
         ("2", "app.switch_mode('backtest')", "Backtest"),
         ("3", "app.switch_mode('orders')", "Orders"),
         ("4", "app.switch_mode('logs')", "Logs"),
+        ("5", "app.switch_mode('settings')", "Settings"),
         ("q", "app.quit", "Quit"),
     ]
 

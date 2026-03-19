@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 from .schema import AppConfig, SecretsConfig
+
+
+def save_config(data: dict[str, Any], config_path: str | Path = "config.yaml") -> None:
+    """Write config dict to YAML file (secrets are never written)."""
+    data.pop("secrets", None)
+    path = Path(config_path)
+    with open(path, "w") as f:
+        yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
 
 
 def load_config(config_path: str | Path = "config.yaml") -> AppConfig:

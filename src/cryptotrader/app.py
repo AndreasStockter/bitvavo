@@ -17,11 +17,13 @@ from .engine.trading import TradingEngine
 from .notifications.telegram import NullNotifier, TelegramNotifier
 from .risk.manager import RiskManager
 from .strategies import BollingerBands, CompositeStrategy, MACrossover, RSIStrategy
+from .strategies.rsi import MultiTimeframeRSIStrategy
 from .strategies.base import Strategy
 from .tui.screens.backtest import BacktestScreen
 from .tui.screens.dashboard import DashboardScreen
 from .tui.screens.logs import LogScreen
 from .tui.screens.orders import OrdersScreen
+from .tui.screens.settings import SettingsScreen
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +37,17 @@ def build_strategy(config: AppConfig) -> Strategy:
             slow_period=config.strategy.ma_crossover.slow_period,
         )
     elif name == "rsi":
+        rsi_cfg = config.strategy.rsi
+        if rsi_cfg.timeframes:
+            timeframes = [
+                (tf.interval, RSIStrategy(tf.period, tf.overbought, tf.oversold))
+                for tf in rsi_cfg.timeframes
+            ]
+            return MultiTimeframeRSIStrategy(timeframes, confirmation=rsi_cfg.confirmation)
         return RSIStrategy(
-            period=config.strategy.rsi.period,
-            overbought=config.strategy.rsi.overbought,
-            oversold=config.strategy.rsi.oversold,
+            period=rsi_cfg.period,
+            overbought=rsi_cfg.overbought,
+            oversold=rsi_cfg.oversold,
         )
     elif name == "bollinger":
         return BollingerBands(
@@ -70,11 +79,18 @@ class CryptoTraderApp(App):
         "backtest": BacktestScreen,
         "orders": OrdersScreen,
         "logs": LogScreen,
+        "settings": SettingsScreen,
     }
 
-    def __init__(self, config: AppConfig | None = None, **kwargs) -> None:
+    def __init__(
+        self,
+        config: AppConfig | None = None,
+        config_path: str = "config.yaml",
+        **kwargs,
+    ) -> None:
         super().__init__(**kwargs)
         self.config = config or load_config()
+        self._config_path = config_path
         self.client: Any = None
         self.strategy: Strategy | None = None
         self.risk_manager: RiskManager | None = None
@@ -140,26 +156,33 @@ class CryptoTraderApp(App):
             engine=self.engine, interval=self.config.trading.interval
         )
 
+        # Initialize portfolio balance and fetch initial data
+        await self.engine.initialize()
+
         self._log(f"Initialized in {self.config.trading.mode} mode")
         self._log(f"Market: {self.config.trading.market}")
         self._log(f"Strategy: {self.strategy.name}")
 
     async def _on_engine_event(self, event: str, data: Any) -> None:
         """Handle events from the trading engine."""
+        screen = self.screen if isinstance(self.screen, DashboardScreen) else None
+
         if event == "price_update":
-            try:
-                screen = self.query_one(DashboardScreen)
+            if screen:
                 screen.update_price(data["market"], data["price"])
-            except Exception:
-                pass
+                screen.query_one("#portfolio-summary").update_portfolio(data["portfolio"])
+                if data.get("candles"):
+                    self._cached_candles = data["candles"]
+                    screen.update_prices_history([c.close for c in self._cached_candles])
+
+        elif event == "initialized":
+            if screen:
+                screen.query_one("#portfolio-summary").update_portfolio(data)
+                screen.query_one("#strategy-panel").set_strategy(self.strategy.name)
 
         elif event == "signal":
-            try:
-                screen = self.query_one(DashboardScreen)
-                panel = screen.query_one("#strategy-panel")
-                panel.update_signal(data)
-            except Exception:
-                pass
+            if screen:
+                screen.query_one("#strategy-panel").update_signal(data)
             self._log(f"Signal: {data.signal_type.value} from {data.strategy_name}")
 
         elif event == "trade":
@@ -193,6 +216,57 @@ class CryptoTraderApp(App):
                 self._log("Trading started")
 
         self.run_worker(_toggle())
+
+    async def apply_new_config(self, new_config: AppConfig) -> None:
+        """Apply updated config without restarting the app."""
+        was_running = self.loop is not None and self.loop.is_running
+        if was_running:
+            await self.loop.stop()
+
+        self.config = new_config
+        self.strategy = build_strategy(new_config)
+        self.risk_manager = RiskManager(new_config.risk)
+
+        if new_config.trading.mode == "live" and new_config.secrets.bitvavo_api_key:
+            from .api.client import AsyncBitvavoClient
+            self.client = AsyncBitvavoClient(
+                api_key=new_config.secrets.bitvavo_api_key,
+                api_secret=new_config.secrets.bitvavo_api_secret,
+            )
+        else:
+            self.client = PaperTradingClient(
+                initial_balance=new_config.backtest.initial_capital,
+                fee_pct=new_config.backtest.fee_pct,
+            )
+
+        if (
+            new_config.telegram.enabled
+            and new_config.secrets.telegram_bot_token
+            and new_config.telegram.chat_id
+        ):
+            notifier = TelegramNotifier(
+                bot_token=new_config.secrets.telegram_bot_token,
+                chat_id=new_config.telegram.chat_id,
+            )
+        else:
+            notifier = NullNotifier()
+
+        self.engine = TradingEngine(
+            config=new_config,
+            client=self.client,
+            strategy=self.strategy,
+            risk_manager=self.risk_manager,
+            repository=self.repository,
+            notifier=notifier,
+        )
+        self.engine.add_callback(self._on_engine_event)
+        self.loop = TradingLoop(engine=self.engine, interval=new_config.trading.interval)
+
+        await self.engine.initialize()
+        self._log(f"Config applied — strategy: {self.strategy.name}, mode: {new_config.trading.mode}")
+
+        if was_running:
+            await self.loop.start()
 
     async def action_quit(self) -> None:
         """Clean shutdown."""

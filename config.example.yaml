@@ -10,9 +10,22 @@ strategy:
     fast_period: 10
     slow_period: 30
   rsi:
+    # Einzel-Timeframe (Standard):
     period: 14
     overbought: 70
     oversold: 30
+    # Multi-Timeframe (optional): Wenn timeframes gesetzt, werden period/overbought/oversold ignoriert.
+    # confirmation: "all" = alle Timeframes muessen uebereinstimmen, "any" = einer reicht.
+    # timeframes:
+    #   - interval: "1h"
+    #     period: 14
+    #     overbought: 70
+    #     oversold: 30
+    #   - interval: "1d"
+    #     period: 14
+    #     overbought: 65
+    #     oversold: 35
+    # confirmation: "all"
   bollinger:
     period: 20
     std_dev: 2.0

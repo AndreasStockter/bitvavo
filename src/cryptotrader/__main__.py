@@ -29,7 +29,7 @@ def main() -> None:
 
     from .app import CryptoTraderApp
 
-    app = CryptoTraderApp(config=config)
+    app = CryptoTraderApp(config=config, config_path=args.config)
     app.run()
 
 

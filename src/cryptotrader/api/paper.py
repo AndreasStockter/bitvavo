@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import time
 import uuid
 
 from ..models.candle import Candle
 from ..models.order import Order, OrderStatus
+
+logger = logging.getLogger(__name__)
 
 
 class PaperTradingClient:
@@ -15,6 +19,13 @@ class PaperTradingClient:
         self._orders: list[Order] = []
         self._candle_cache: dict[str, list[Candle]] = {}
         self._fee_pct = fee_pct
+        self._bitvavo = None
+
+    def _get_bitvavo(self):
+        if self._bitvavo is None:
+            from python_bitvavo_api.bitvavo import Bitvavo
+            self._bitvavo = Bitvavo({"RESTURL": "https://api.bitvavo.com/v2"})
+        return self._bitvavo
 
     def set_candles(self, market: str, candles: list[Candle]) -> None:
         """Inject candles for testing/backtesting."""
@@ -23,11 +34,27 @@ class PaperTradingClient:
     async def get_candles(
         self, market: str, interval: str, limit: int = 100
     ) -> list[Candle]:
-        candles = self._candle_cache.get(market, [])
-        return candles[-limit:]
+        # Use injected candles if available (e.g. from backtesting)
+        if market in self._candle_cache:
+            candles = self._candle_cache[market]
+            return candles[-limit:]
+        # Otherwise fetch live market data from the public Bitvavo API
+        try:
+            response = await asyncio.to_thread(
+                self._get_bitvavo().candles, market, interval, {"limit": limit}
+            )
+            if isinstance(response, dict) and "error" in response:
+                logger.error("Bitvavo candles error: %s", response)
+                return []
+            candles = [Candle.from_bitvavo(c) for c in response]
+            candles.sort(key=lambda c: c.timestamp)
+            return candles
+        except Exception:
+            logger.exception("Failed to fetch candles for %s", market)
+            return []
 
     async def get_ticker_price(self, market: str) -> float:
-        candles = self._candle_cache.get(market, [])
+        candles = await self.get_candles(market, "1m", limit=1)
         if candles:
             return candles[-1].close
         return 0.0

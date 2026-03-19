@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class AsyncBitvavoClient:
     def __init__(self, api_key: str, api_secret: str) -> None:
-        from bitvavo.Bitvavo import Bitvavo
+        from python_bitvavo_api.bitvavo import Bitvavo
 
         self._bitvavo = Bitvavo(
             {"APIKEY": api_key, "APISECRET": api_secret, "RESTURL": "https://api.bitvavo.com/v2"}

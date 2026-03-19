@@ -70,17 +70,32 @@ class TradingEngine:
         market = self.config.trading.market
         interval = self.config.trading.interval
 
-        candles = await self.client.get_candles(market, interval)
-        if not candles:
-            logger.warning("No candles received for %s", market)
-            return
+        # Multi-timeframe strategies declare required_intervals
+        required_intervals = getattr(self.strategy, "required_intervals", None)
+        if required_intervals:
+            candles_by_interval: dict[str, list] = {}
+            for iv in required_intervals:
+                c = await self.client.get_candles(market, iv)
+                if not c:
+                    logger.warning("No candles received for %s/%s", market, iv)
+                    return
+                candles_by_interval[iv] = c
+            candles = candles_by_interval[required_intervals[0]]
+            signal = self.strategy.evaluate_multi(candles_by_interval)
+        else:
+            candles = await self.client.get_candles(market, interval)
+            if not candles:
+                logger.warning("No candles received for %s", market)
+                return
+            signal = self.strategy.evaluate(candles)
 
         # Update current price
         current_price = candles[-1].close
         pos = self.portfolio.get_position(market)
         pos.current_price = current_price
         await self._notify_callbacks("price_update", {
-            "market": market, "price": current_price, "portfolio": self.portfolio
+            "market": market, "price": current_price, "portfolio": self.portfolio,
+            "candles": candles,
         })
 
         # Check stop loss / take profit
@@ -94,8 +109,6 @@ class TradingEngine:
                 await self._execute_sell(market, pos.amount, current_price, "take_profit")
                 return
 
-        # Evaluate strategy
-        signal = self.strategy.evaluate(candles)
         await self._notify_callbacks("signal", signal)
 
         if not signal.is_actionable:

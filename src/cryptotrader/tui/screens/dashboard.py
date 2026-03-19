@@ -18,9 +18,19 @@ class DashboardScreen(Screen):
         ("2", "app.switch_mode('backtest')", "Backtest"),
         ("3", "app.switch_mode('orders')", "Orders"),
         ("4", "app.switch_mode('logs')", "Logs"),
+        ("5", "app.switch_mode('settings')", "Settings"),
         ("q", "app.quit", "Quit"),
         ("space", "toggle_trading", "Start/Stop"),
     ]
+
+    async def on_mount(self) -> None:
+        """Trigger initial data fetch once the screen is mounted."""
+        engine = getattr(self.app, "engine", None)
+        strategy = getattr(self.app, "strategy", None)
+        if strategy:
+            self.query_one("#strategy-panel").set_strategy(strategy.name)
+        if engine:
+            self.run_worker(engine.tick())
 
     def compose(self) -> ComposeResult:
         yield Header()
