@@ -214,6 +214,8 @@ class CryptoTraderApp(App):
             else:
                 await self.loop.start()
                 self._log("Trading started")
+            if isinstance(self.screen, DashboardScreen):
+                self.screen.update_trading_status(self.loop.is_running)
 
         self.run_worker(_toggle())
 

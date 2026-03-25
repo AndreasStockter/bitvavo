@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import itertools
 import logging
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
 
 from ..models.backtest import BacktestResult, SweepResult
@@ -47,10 +47,12 @@ class ParameterSweep:
         initial_capital: float = 10000.0,
         fee_pct: float = 0.0025,
         max_workers: int | None = None,
+        use_threads: bool = False,
     ) -> None:
         self.initial_capital = initial_capital
         self.fee_pct = fee_pct
         self.max_workers = max_workers
+        self.use_threads = use_threads
 
     def sweep(
         self,
@@ -91,7 +93,8 @@ class ParameterSweep:
             fee_pct=self.fee_pct,
         )
 
-        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+        pool_cls = ThreadPoolExecutor if self.use_threads else ProcessPoolExecutor
+        with pool_cls(max_workers=self.max_workers) as executor:
             results = list(executor.map(run_fn, combinations))
 
         return SweepResult(

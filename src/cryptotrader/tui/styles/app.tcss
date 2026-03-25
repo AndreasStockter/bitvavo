@@ -50,6 +50,7 @@ Screen {
 
 #backtest-controls {
     height: auto;
+    max-height: 12;
     padding: 1;
     border: solid $accent;
     margin: 1;
@@ -57,7 +58,18 @@ Screen {
 
 #backtest-results {
     height: 1fr;
+    min-height: 10;
     margin: 1;
+}
+
+#backtest-results HeatmapWidget {
+    height: auto;
+    max-height: 40%;
+}
+
+#backtest-results DataTable {
+    height: 1fr;
+    min-height: 8;
 }
 
 #orders-table {

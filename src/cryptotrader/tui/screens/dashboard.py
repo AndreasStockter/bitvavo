@@ -32,10 +32,25 @@ class DashboardScreen(Screen):
         if engine:
             self.run_worker(engine.tick())
 
+    DEFAULT_CSS = """
+    #trading-status {
+        text-align: center;
+        height: 1;
+        margin: 0 1;
+    }
+    #trading-status.running {
+        color: $success;
+    }
+    #trading-status.stopped {
+        color: $error;
+    }
+    """
+
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(classes="screen-container"):
             yield Static("", id="price-label")
+            yield Static("■ GESTOPPT  –  Space zum Starten", id="trading-status", classes="stopped")
             yield PriceChartWidget(id="price-chart")
             with Horizontal(classes="top-row"):
                 yield PortfolioSummaryWidget(id="portfolio-summary")
@@ -49,6 +64,15 @@ class DashboardScreen(Screen):
     def update_prices_history(self, prices: list[float]) -> None:
         chart = self.query_one("#price-chart", PriceChartWidget)
         chart.update_prices(prices)
+
+    def update_trading_status(self, running: bool) -> None:
+        status = self.query_one("#trading-status", Static)
+        if running:
+            status.set_classes("running")
+            status.update("▶ AKTIV  –  Space zum Stoppen")
+        else:
+            status.set_classes("stopped")
+            status.update("■ GESTOPPT  –  Space zum Starten")
 
     def action_toggle_trading(self) -> None:
         self.app.toggle_trading()  # type: ignore[attr-defined]

@@ -70,6 +70,8 @@ class RiskManager:
 
     def check_stop_loss(self, entry_price: float, current_price: float) -> bool:
         """Return True if stop loss is triggered."""
+        if self.config.stop_loss_pct <= 0:
+            return False
         if entry_price <= 0:
             return False
         loss_pct = (entry_price - current_price) / entry_price
@@ -77,6 +79,8 @@ class RiskManager:
 
     def check_take_profit(self, entry_price: float, current_price: float) -> bool:
         """Return True if take profit is triggered."""
+        if self.config.take_profit_pct <= 0:
+            return False
         if entry_price <= 0:
             return False
         profit_pct = (current_price - entry_price) / entry_price

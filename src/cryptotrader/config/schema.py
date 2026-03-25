@@ -54,8 +54,8 @@ class StrategyConfig(BaseModel):
 class RiskConfig(BaseModel):
     max_position_pct: float = 0.25
     max_drawdown_pct: float = 0.10
-    stop_loss_pct: float = 0.05
-    take_profit_pct: float = 0.10
+    stop_loss_pct: float = 0.0
+    take_profit_pct: float = 0.0
     max_daily_trades: int = 10
 
 
